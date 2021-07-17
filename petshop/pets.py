@@ -18,26 +18,31 @@ def format_date(d):
 
 @bp.route("/search/<field>/<value>")
 def search(field, value):
-    # TBD
-    return ""
     conn=db.get_db()
     cursor=conn.cursor()
     orderby=request.args.get("order_by","id")
     or_asc=request.args.get("order","asc")
+    oby=request.args.get("order_by","id")
+    order=request.args.get("order","asc")
 
     if orderby not in ['desc','asc']:
         orderby='asc'
+    if order not in ['desc','asc']:
+        order='asc'
 
-       if field=='tag':
+    if field=='tag':
         cursor.execute(f""" select p.id,p.name,p.bought,p.sold,a.name from pet p, animal a,tag t,tags_pets tpet where
-                        tpet.species=a.id and tpet.pet=p.id and tpet.tag=t.id and t.name=? order by p.{orderby} {or_asc}""",[value])
                         p.species=a.id and tpet.pet=p.id and tpet.tag=t.id and t.name=? order by p.{orderby} {or_asc}""",[value])
+                        p.species=a.id and tpet.pet=p.id and tpet.tag=t.id and t.name=? order by p.{oby} {order}""",[value])
     else:
         cursor.execute(f"""select p.id,p.name,p.bought,p.sold,a.name from pet p,animal a
                         where p.{field}=? order by p.{orderby}{or_asc}""",[value])
+                        where p.{field}=? order by p.{oby} {order}""",[value])
+
     pets=cursor.fetchall()
 
     return render_template('search.html',pets=pets,field=field,value=value,or_asc='asc' if or_asc=="desc" else "desc")
+    return render_template('search.html',pets=pets,field=field,value=value,order='asc' if order=="desc" else "desc")
 
 @bp.route("/")
 def dashboard():
