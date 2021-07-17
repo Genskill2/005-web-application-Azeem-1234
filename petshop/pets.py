@@ -7,42 +7,24 @@ bp = Blueprint("pets", "pets", url_prefix="")
 def format_date(d):
     if d:
         d = datetime.datetime.strptime(d, '%Y-%m-%d')
-        if d==1:
-            d=datetime.datetime.now()
-        else:
-            d = datetime.datetime.strptime(d, '%Y-%m-%d')
         v = d.strftime("%a - %b %d, %Y")
         return v
     else:
         return None
-
 @bp.route("/search/<field>/<value>")
 def search(field, value):
-    conn=db.get_db()
-    cursor=conn.cursor()
-    orderby=request.args.get("order_by","id")
-    or_asc=request.args.get("order","asc")
-    oby=request.args.get("order_by","id")
-    order=request.args.get("order","asc")
-
-    if orderby not in ['desc','asc']:
-        orderby='asc'
-    if order not in ['desc','asc']:
-        order='asc'
-
-    if field=='tag':
-        cursor.execute(f""" select p.id,p.name,p.bought,p.sold,a.name from pet p, animal a,tag t,tags_pets tpet where
-                        p.species=a.id and tpet.pet=p.id and tpet.tag=t.id and t.name=? order by p.{orderby} {or_asc}""",[value])
-                        p.species=a.id and tpet.pet=p.id and tpet.tag=t.id and t.name=? order by p.{oby} {order}""",[value])
+    # TBD
+    return ""
+    conn = db.get_db()
+    cursor = conn.cursor()
+    oby = request.args.get("order_by", "id")
+    order = request.args.get("order", "asc")
+    if order == "asc":
+      cursor.execute(f"select p.id, p.name, p.bought, p.sold, s.name from pet p, animal s, tags_pets tp where p.species = s.id and tp.pet = p.id and tp.tag = (select id from tag where name = ?) order by p.{oby}", [value])
     else:
-        cursor.execute(f"""select p.id,p.name,p.bought,p.sold,a.name from pet p,animal a
-                        where p.{field}=? order by p.{orderby}{or_asc}""",[value])
-                        where p.{field}=? order by p.{oby} {order}""",[value])
-
-    pets=cursor.fetchall()
-
-    return render_template('search.html',pets=pets,field=field,value=value,or_asc='asc' if or_asc=="desc" else "desc")
-    return render_template('search.html',pets=pets,field=field,value=value,order='asc' if order=="desc" else "desc")
+      cursor.execute(f"select p.id, p.name, p.bought, p.sold, s.name from pet p, animal s, tags_pets tp where p.species = s.id and tp.pet = p.id and tp.tag = (select id from tag where name = ?) order by p.{oby} desc", [value])
+    pets = cursor.fetchall()
+    return render_template('search.html', pets = pets, order="desc" if order=="asc" else "asc")
 
 @bp.route("/")
 def dashboard():
@@ -97,7 +79,12 @@ def edit(pid):
     elif request.method == "POST":
         description = request.form.get('description')
         sold = request.form.get("sold")
+        if sold:
+          sold_date = datetime.date.today()
+          cursor.execute("update pet set sold = ?, description = ? where id = ?", [sold_date, description, pid])
+          conn.commit()
+        else:
+          cursor.execute("update pet set description = ? where id = ?", [description, pid])
+          conn.commit()
         # TODO Handle sold
-        cursor.execute(f"""update pet set description = ? , sold= ? where id = ? """,[description,sold,pid])
-        conn.commit()
         return redirect(url_for("pets.pet_info", pid=pid), 302)
